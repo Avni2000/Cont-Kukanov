@@ -8,6 +8,7 @@ Complete end-to-end trading system featuring CSV data streaming and real-time Sm
 
 ```bash
 # Clone and start the full SOR system
+sudo apt-get docker-compose-v2 
 git clone https://github.com/Avni2000/Cont-Kukanov
 cd Cont-Kukanov
 docker-compose -f docker-compose-sor.yml up
@@ -73,10 +74,10 @@ Where:
 ### Option 1: Full SOR System (Recommended)
 ```bash
 # Complete system with SOR + market data
-docker-compose -f docker-compose-sor.yml up
+docker-compose -f docker compose-sor.yml up
 
 # With both brute-force and L2 algorithms
-docker-compose -f docker-compose-sor.yml --profile l2 up
+docker-compose -f docker compose-sor.yml --profile l2 up
 ```
 
 ### Option 2: Original Producer/Viewer Only
@@ -171,55 +172,6 @@ The Smart Order Router outputs detailed JSON decisions in real-time:
 2024-01-15 10:30:45 - INFO - SOR Result [AAPL]: allocation=[0, 1600, 3400], cost=$757891.23, fill_rate=100.0%
 ```
 
-##  Cloud Deployment
-
-### AWS ECS/Fargate
-```bash
-# Build and push to ECR
-docker build -t sor-system .
-docker tag sor-system:latest <aws-account>.dkr.ecr.us-east-1.amazonaws.com/sor-system:latest
-docker push <aws-account>.dkr.ecr.us-east-1.amazonaws.com/sor-system:latest
-```
-
-### Google Cloud Run
-```bash
-# Build and deploy
-gcloud builds submit --tag gcr.io/<project-id>/sor-system
-gcloud run deploy --image gcr.io/<project-id>/sor-system --platform managed
-```
-
-### Azure Container Instances
-```bash
-# Build and deploy
-az acr build --registry <registry-name> --image sor-system .
-az container create --resource-group <group> --name sor-system --image <registry>.azurecr.io/sor-system:latest
-```
-
-### Kubernetes
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: smart-order-router
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: sor
-  template:
-    metadata:
-      labels:
-        app: sor
-    spec:
-      containers:
-      - name: sor
-        image: sor-system:latest
-        env:
-        - name: ORDER_SIZE
-          value: "5000"
-        - name: GREEDY_L2
-          value: "true"
-```
 
 ##  Performance & Monitoring
 

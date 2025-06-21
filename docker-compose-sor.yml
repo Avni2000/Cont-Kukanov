@@ -81,7 +81,7 @@ services:
       THETA_QUEUE: 0.002
       STEP: 100
       GREEDY_L2: "false"  # Set to "true" for greedy L2 allocation
-    command: ["./entrypoint_sor.sh"]
+    entrypoint: ["./entrypoint_sor.sh"]
     restart: unless-stopped
 
   # Alternative SOR service using greedy L2 algorithm
@@ -104,7 +104,7 @@ services:
       LAMBDA_UNDER: 0.008
       THETA_QUEUE: 0.003
       GREEDY_L2: "true"
-    command: ["./entrypoint_sor.sh"]
+    entrypoint: ["./entrypoint_sor.sh"]
     profiles: ["l2"]  # Use with: docker-compose --profile l2 up
     restart: unless-stopped
 
