@@ -57,7 +57,7 @@ services:
     environment:
       KAFKA_SERVERS: kafka:29092
       TOPIC_NAME: market_data
-      CSV_FILE: sample.csv  # Use sample for quick testing, change to l1_day.csv for full dataset
+      CSV_FILE: l1_day.csv  # Use sample for quick testing, change to l1_day.csv for full dataset
     command: ["./entrypoint.sh"]
     restart: unless-stopped
 

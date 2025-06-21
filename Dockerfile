@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the producer script and data files
 COPY kafka_producer.py .
-COPY *.csv .
+COPY *.csv ./
 
 # Set environment variables
 ENV KAFKA_SERVERS=kafka:9092

@@ -9,11 +9,11 @@ echo "=== EC2 Kafka Producer Setup ==="
 
 # Update the system
 echo "Updating system packages..."
-sudo yum update -y
+sudo apt update -y
 
 # Install Docker
 echo "Installing Docker..."
-sudo yum install -y docker
+sudo apt install -y docker
 sudo systemctl start docker
 sudo systemctl enable docker
 sudo usermod -a -G docker ec2-user
