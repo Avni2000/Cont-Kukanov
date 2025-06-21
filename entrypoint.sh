@@ -17,5 +17,4 @@ CSV_FILE=${CSV_FILE:-l1_day.csv}
 python kafka_producer.py \
   --file "$CSV_FILE" \
   --topic "$TOPIC_NAME" \
-  --kafka-servers "$KAFKA_SERVERS" \
-  --fast-mode 
+  --kafka-servers "$KAFKA_SERVERS" 

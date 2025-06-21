@@ -21,10 +21,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class BenchmarkSOR:
-    def __init__(self, kafka_servers='localhost:9092', order_size=5000, fast_mode=False):
+    def __init__(self, kafka_servers='localhost:9092', order_size=5000):
         self.kafka_servers = kafka_servers
         self.order_size = order_size
-        self.fast_mode = fast_mode
         self.producer = None
         self.venues_data = []
         
@@ -77,7 +76,7 @@ class BenchmarkSOR:
         logger.info(f"Streaming {len(self.venues_data)} snapshots to topic '{topic}'...")
         
         # Stream with progress updates
-        batch_size = 5000 if self.fast_mode else 1000
+        batch_size = 5000
         
         for i, venue in enumerate(self.venues_data):
             key = f"{venue['publisher_id']}_{venue['timestamp']}"
@@ -85,8 +84,6 @@ class BenchmarkSOR:
             
             if (i + 1) % batch_size == 0:
                 logger.info(f"Streamed {i + 1}/{len(self.venues_data)} snapshots")
-                if self.fast_mode:
-                    self.producer.flush()  # Flush more frequently in fast mode
         
         self.producer.flush()
         logger.info("Streaming completed")
@@ -325,8 +322,21 @@ class BenchmarkSOR:
             "savings_vs_baselines_bps": savings
         }
         
+        # Save JSON to file
+        output_file = "benchmark_results.json"
+        try:
+            with open(output_file, 'w') as f:
+                json.dump(final_result, f, indent=2)
+            logger.info(f"Results saved to {output_file}")
+        except Exception as e:
+            logger.warning(f"Could not save to file: {e}")
+        
         # Print final JSON to stdout
+        print("\n" + "="*50)
+        print("FINAL BENCHMARK RESULTS:")
+        print("="*50)
         print(json.dumps(final_result, indent=2))
+        print("="*50)
         
         return final_result
 
@@ -336,14 +346,12 @@ def main():
     parser.add_argument('--csv-file', default='l1_day.csv', help='CSV file to process')
     parser.add_argument('--topic', default='mock_l1_stream', help='Kafka topic')
     parser.add_argument('--order-size', type=int, default=5000, help='Order size')
-    parser.add_argument('--fast-mode', action='store_true', help='Enable fast mode for quicker execution')
     
     args = parser.parse_args()
     
     benchmark = BenchmarkSOR(
         kafka_servers=args.kafka_servers,
-        order_size=args.order_size,
-        fast_mode=args.fast_mode
+        order_size=args.order_size
     )
     
     try:

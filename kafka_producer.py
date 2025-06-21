@@ -147,10 +147,8 @@ class CSVKafkaProducer:
         
         # Check if we have ts_event for time-accurate replay
         has_ts_event = 'ts_event' in df.columns
-        if has_ts_event and not self.fast_mode:
+        if has_ts_event:
             print("Time-accurate replay enabled using ts_event timestamps")
-        elif self.fast_mode:
-            print("Fast mode enabled - streaming without timing delays")
         else:
             print("Streaming without timing (you messed up somewhere and we can't read the csv)")
         
@@ -158,15 +156,15 @@ class CSVKafkaProducer:
             start_time = time.time()
             first_timestamp = None
             
-            if has_ts_event and not self.fast_mode:
+            if has_ts_event:
                 first_timestamp = df.iloc[0]['ts_event']
                 print(f"First timestamp: {first_timestamp}")
             for _, row in df.iterrows():
                 if not self.running:             # needed to stop the stream @exit
                     break
                 
-                # Time-accurate replay using ts_event (skip if fast_mode is enabled)
-                if has_ts_event and first_timestamp and not self.fast_mode:
+                # Time-accurate replay using ts_event
+                if has_ts_event and first_timestamp:
                     current_timestamp = row['ts_event']
                     elapsed_data_time = (current_timestamp - first_timestamp).total_seconds()
                     elapsed_real_time = time.time() - start_time

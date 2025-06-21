@@ -308,83 +308,152 @@ def allocate_greedy_l2(
 
 
 def run_test_harness():
-    """Test harness with toy data"""
-    print("=== Smart Order Router Test Harness ===\n")
+    """Test harness for validating SOR algorithms"""
+    print("Running SOR Test Harness...")
     
-    # Create test venues
+    # Test venues
     venues = [
-        Venue(ask=100.10, ask_size=500, fee=0.003, rebate=0.001),
-        Venue(ask=100.11, ask_size=300, fee=0.002, rebate=0.0015),
-        Venue(ask=100.12, ask_size=800, fee=0.0025, rebate=0.001),
+        Venue(ask=100.0, ask_size=1000, fee=0.003, rebate=0.001),
+        Venue(ask=100.1, ask_size=2000, fee=0.003, rebate=0.001),
+        Venue(ask=100.2, ask_size=1500, fee=0.003, rebate=0.001)
     ]
     
-    print("Test Venues:")
-    for i, venue in enumerate(venues):
-        print(f"  Venue {i}: ask=${venue.ask:.2f}, size={venue.ask_size}, "
-              f"fee={venue.fee:.4f}, rebate={venue.rebate:.4f}")
-    
-    # Test parameters
-    order_size = 1000
+    order_size = 5000
     lambda_over = 0.01
     lambda_under = 0.005
     theta_queue = 0.002
     step = 100
     
-    print(f"\nOrder Parameters:")
-    print(f"  Order size: {order_size} shares")
-    print(f"  λ_over: {lambda_over}")
-    print(f"  λ_under: {lambda_under}")
-    print(f"  θ_queue: {theta_queue}")
-    print(f"  Step size: {step}")
+    print(f"\nTest Configuration:")
+    print(f"Order Size: {order_size}")
+    print(f"Venues: {len(venues)}")
+    print(f"λ_over: {lambda_over}, λ_under: {lambda_under}, θ_queue: {theta_queue}")
     
-    # Run allocation
-    print(f"\n=== Running Optimization ===")
-    best_split, best_cost = allocate(
-        order_size=order_size,
-        venues=venues,
-        lambda_over=lambda_over,
-        lambda_under=lambda_under,
-        theta_queue=theta_queue,
-        step=step
-    )
-    
-    print(f"\n=== Results ===")
-    print(f"Optimal split: {best_split}")
+    # Run brute-force allocation
+    print("\n--- Brute-Force Allocation ---")
+    best_split, best_cost = allocate(order_size, venues, lambda_over, lambda_under, theta_queue, step)
+    print(f"Optimal allocation: {best_split}")
     print(f"Total cost: ${best_cost:.2f}")
     
-    # Detailed breakdown
-    print(f"\nAllocation breakdown:")
-    total_executed = 0
-    total_cash = 0.0
+    # Test Level-2 venues
+    l2_venues = [
+        Level2Venue(
+            venue_id="venue_0",
+            levels=[(100.0, 500), (100.05, 500)],
+            fee=0.003,
+            rebate=0.001
+        ),
+        Level2Venue(
+            venue_id="venue_1", 
+            levels=[(100.1, 1000), (100.15, 1000)],
+            fee=0.003,
+            rebate=0.001
+        )
+    ]
     
-    for i, (venue, allocation) in enumerate(zip(venues, best_split)):
-        executed = min(allocation, venue.ask_size)
-        cash = executed * (venue.ask + venue.fee)
-        over_alloc = max(allocation - venue.ask_size, 0)
-        rebate_earned = over_alloc * venue.rebate
-        net_cash = cash - rebate_earned
-        
-        total_executed += executed
-        total_cash += net_cash
-        
-        print(f"  Venue {i}: allocate {allocation}, execute {executed}, "
-              f"cash ${net_cash:.2f}")
-    
-    underfill = max(order_size - total_executed, 0)
-    overfill = max(total_executed - order_size, 0)
-    
-    print(f"\nExecution summary:")
-    print(f"  Executed: {total_executed}/{order_size} shares")
-    print(f"  Underfill: {underfill} shares")
-    print(f"  Overfill: {overfill} shares")
-    print(f"  Cash spent: ${total_cash:.2f}")
-    print(f"  Penalties: ${(lambda_under * underfill + lambda_over * overfill):.2f}")
-    print(f"  Queue risk: ${(theta_queue * (underfill + overfill)):.2f}")
+    print("\n--- Greedy L2 Allocation ---")
+    l2_allocation, l2_cost = allocate_greedy_l2(order_size, l2_venues, lambda_over, lambda_under, theta_queue)
+    print(f"L2 allocation: {l2_allocation}")
+    print(f"L2 cost: ${l2_cost:.2f}")
 
 
-if __name__ == "__main__":
-    # Setup logging
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+class SmartOrderRouter:
+    """
+    Smart Order Router class that wraps the allocation functions
+    for easier integration with other systems.
+    """
     
-    # Run test harness
+    def __init__(self, order_size=5000, lambda_over=0.01, lambda_under=0.005, 
+                 theta_queue=0.002, step=100, greedy_l2=False):
+        """
+        Initialize Smart Order Router
+        
+        Args:
+            order_size: Total shares to execute
+            lambda_over: Over-execution penalty per share
+            lambda_under: Under-execution penalty per share  
+            theta_queue: Queue risk penalty per share
+            step: Allocation step size for brute-force
+            greedy_l2: Use greedy L2 algorithm instead of brute-force
+        """
+        self.order_size = order_size
+        self.lambda_over = lambda_over
+        self.lambda_under = lambda_under
+        self.theta_queue = theta_queue
+        self.step = step
+        self.greedy_l2 = greedy_l2
+        
+    def optimize_allocation(self, venues_data):
+        """
+        Optimize allocation across venues
+        
+        Args:
+            venues_data: List of venue dictionaries with keys:
+                        venue_id, ask, ask_size, fee, rebate
+                        
+        Returns:
+            Dictionary with allocation results
+        """
+        try:
+            # Convert venue data to Venue objects
+            venues = []
+            for v in venues_data:
+                venue = Venue(
+                    ask=float(v['ask']),
+                    ask_size=int(v['ask_size']),
+                    fee=float(v.get('fee', 0.003)),
+                    rebate=float(v.get('rebate', 0.001))
+                )
+                venues.append(venue)
+            
+            if not venues:
+                return None
+                
+            # Run optimization
+            allocation, total_cost = allocate(
+                self.order_size, venues, self.lambda_over, 
+                self.lambda_under, self.theta_queue, self.step
+            )
+            
+            # Calculate execution summary
+            total_executed = 0
+            for i, venue in enumerate(venues):
+                executed_at_venue = min(allocation[i], venue.ask_size)
+                total_executed += executed_at_venue
+            
+            underfill = max(self.order_size - total_executed, 0)
+            overfill = max(total_executed - self.order_size, 0)
+            fill_rate = total_executed / self.order_size if self.order_size > 0 else 0
+            
+            # Format venue details
+            venue_details = []
+            for i, (venue_data, alloc) in enumerate(zip(venues_data, allocation)):
+                venue_details.append({
+                    'venue_id': venue_data.get('venue_id', f'venue_{i}'),
+                    'ask': venues[i].ask,
+                    'ask_size': venues[i].ask_size,
+                    'fee': venues[i].fee,
+                    'rebate': venues[i].rebate,
+                    'allocation': alloc
+                })
+            
+            return {
+                'allocation': allocation,
+                'total_cost': total_cost,
+                'execution_summary': {
+                    'total_executed': total_executed,
+                    'underfill': underfill,
+                    'overfill': overfill,
+                    'cash_spent': total_cost,  # Simplified for now
+                    'fill_rate': fill_rate
+                },
+                'venues': venue_details
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in optimize_allocation: {e}")
+            return None
+
+
+if __name__ == '__main__':
     run_test_harness() 
