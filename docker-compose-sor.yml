@@ -122,6 +122,25 @@ services:
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
     restart: unless-stopped
 
+  # SOR Benchmark System - Runs parameter optimization and baseline comparison
+  sor-benchmark:
+    build: .
+    container_name: sor-benchmark
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      KAFKA_SERVERS: kafka:29092
+      CSV_FILE: l1_day.csv
+      TOPIC_NAME: mock_l1_stream
+      ORDER_SIZE: 5000
+    entrypoint: ["./entrypoint_benchmark.sh"]
+    profiles: ["benchmark"]  # Use with: docker compose --profile benchmark up
+    restart: "no"  # Run once and stop
+
 volumes:
   kafka_data:
   zookeeper_data: 

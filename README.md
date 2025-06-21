@@ -74,30 +74,37 @@ Where:
 ### Option 1: Full SOR System (Recommended)
 ```bash
 # Complete system with SOR + market data
-docker-compose -f docker compose-sor.yml up
+docker compose -f docker-compose-sor.yml up
 
 # With both brute-force and L2 algorithms
-docker-compose -f docker compose-sor.yml --profile l2 up
+docker compose -f docker-compose-sor.yml --profile l2 up
 ```
 
-### Option 2: Original Producer/Viewer Only
+### Option 2: SOR Benchmark System
 ```bash
-# Legacy system for basic streaming
-docker-compose up
+# Run complete benchmark with parameter optimization
+docker compose -f docker-compose-sor.yml --profile benchmark up
+
+# This will:
+# - Parse l1_day.csv and stream to mock_l1_stream topic
+# - Optimize lambda_over, lambda_under, theta_queue parameters
+# - Compare against Best Ask, TWAP, VWAP baselines
+# - Output final JSON with savings in basis points
 ```
 
-### Option 3: Local Development
+### Option 3: Original Producer/Viewer Only
 ```bash
-# Test SOR module standalone
-python smart_order_router.py
-
-# Run individual components
-python kafka_producer.py --file l1_day.csv --topic market_data
-python kafka_viewer.py --topic market_data
-python kafka_sor_consumer.py --topic market_data --order-size 5000
+# Legacy system for basic streaming made for kafka debugging
+docker compose up
 ```
+
+
+
 
 ##  Configuration Options
+
+All of the variables above are highly mutable. To test with different strategies, we can easily change the variables in our ec2 instance. For the sake of time + the scope of this project, I won't make this interactive. 
+
 
 ### Environment Variables (Docker)
 
@@ -112,6 +119,7 @@ python kafka_sor_consumer.py --topic market_data --order-size 5000
 | `CSV_FILE` | l1_day.csv | Market data file |
 
 ### Example Configurations
+
 
 **Conservative Trading:**
 ```bash
@@ -172,6 +180,55 @@ The Smart Order Router outputs detailed JSON decisions in real-time:
 2024-01-15 10:30:45 - INFO - SOR Result [AAPL]: allocation=[0, 1600, 3400], cost=$757891.23, fill_rate=100.0%
 ```
 
+##  Benchmark System Output
+
+### Parameter Optimization Results
+The benchmark system outputs a comprehensive JSON report after optimizing parameters and comparing against baselines:
+
+```json
+{
+  "best_parameters": {
+    "lambda_over": 0.012,
+    "lambda_under": 0.008,
+    "theta_queue": 0.005
+  },
+  "optimized": {
+    "total_cash": 248750,
+    "avg_fill_px": 49.75
+  },
+  "baselines": {
+    "best_ask": {
+      "total_cash": 250000,
+      "avg_fill_px": 50.00
+    },
+    "twap": {
+      "total_cash": 251000,
+      "avg_fill_px": 50.20
+    },
+    "vwap": {
+      "total_cash": 249800,
+      "avg_fill_px": 49.96
+    }
+  },
+  "savings_vs_baselines_bps": {
+    "best_ask": 50.0,
+    "twap": 89.6,
+    "vwap": 21.2
+  }
+}
+```
+
+### Benchmark Process
+1. **Data Parsing**: Extracts venue snapshots from `l1_day.csv` using `publisher_id`, `ask_px_00`, `ask_sz_00`
+2. **Kafka Streaming**: Publishes snapshots to `mock_l1_stream` topic
+3. **Parameter Search**: Tests combinations of λ_over, λ_under, θ_queue across defined ranges
+4. **Baseline Comparison**: 
+   - **Best Ask**: Greedy fill at lowest available ask price
+   - **TWAP**: Time-weighted average price over 60-second intervals
+   - **VWAP**: Volume-weighted average price by displayed size
+5. **Savings Calculation**: Reports improvement in basis points vs each baseline
+
+##  Cloud Deployment
 
 ##  Performance & Monitoring
 
