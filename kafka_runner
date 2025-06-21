@@ -1,0 +1,8 @@
+#!/bin/bash
+# Cute little wrapper for demo day (so tomorrow lol)! 
+# If you found this, congratulations! I learned a lot about kafka and SORs through this project, and I'd like to
+# give a litle shoutout to my research mentor for pushing me to learn to read papers! 
+
+# Execute the Python script (with all arguments)
+exec python3 kafka_viewer.py --topic market_data &
+exec python3 kafka_producer.py --file l1_day.csv --topic market_data
