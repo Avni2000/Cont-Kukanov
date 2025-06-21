@@ -10,11 +10,14 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: ERROR
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "2181"]
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "none"  # Disable logging output
 
   kafka:
     image: confluentinc/cp-kafka:7.4.0
@@ -39,11 +42,14 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_JMX_PORT: 9997
       KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_LOG4J_ROOT_LOGLEVEL: ERROR
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "none"  # Disable logging output
 
   market-data-producer:
     build: .
@@ -120,7 +126,11 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      LOGGING_LEVEL_ROOT: ERROR
+      LOGGING_LEVEL_COM_PROVECTUS: ERROR
     restart: unless-stopped
+    logging:
+      driver: "none"  # Disable logging output
 
   # SOR Benchmark System - Runs parameter optimization and baseline comparison
   sor-benchmark:

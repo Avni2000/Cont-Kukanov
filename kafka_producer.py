@@ -30,17 +30,19 @@ class CSVKafkaProducer:
     Kafka producer for streaming CSV data as JSON messages with time-accurate replay
     """
     
-    def __init__(self, bootstrap_servers: str = 'localhost:9092'):
+    def __init__(self, bootstrap_servers: str = 'localhost:9092', fast_mode: bool = False):
         """
-        Initialize the CSV Kafka producer
+        Initialize CSV Kafka Producer
         
         Args:
-            bootstrap_servers: Kafka bootstrap servers
+            bootstrap_servers: Kafka bootstrap servers string
+            fast_mode: If True, skip time-accurate replay for faster streaming
         """
         self.bootstrap_servers = bootstrap_servers
         self.producer = None
         self.running = False
         self.message_count = 0
+        self.fast_mode = fast_mode
     
     def setup_producer(self) -> bool:
         """
@@ -54,7 +56,14 @@ class CSVKafkaProducer:
             print(f"Connecting to Kafka broker at {self.bootstrap_servers}...")
             self.producer = KafkaProducer(
                 bootstrap_servers=self.bootstrap_servers,
-                value_serializer=lambda x: json.dumps(x, default=str).encode('utf-8')
+                value_serializer=lambda x: json.dumps(x, default=str).encode('utf-8'),
+                # Optimization settings for faster throughput
+                batch_size=65536,  # Larger batch size
+                linger_ms=10,      # Small delay to batch messages
+                compression_type='gzip',  # Compress messages
+                max_in_flight_requests_per_connection=20,  # More concurrent requests
+                buffer_memory=67108864,  # 64MB buffer
+                acks=1  # Don't wait for all replicas
             )
             print(f"Successfully connected to Kafka broker: {self.bootstrap_servers}")
             return True
@@ -138,8 +147,10 @@ class CSVKafkaProducer:
         
         # Check if we have ts_event for time-accurate replay
         has_ts_event = 'ts_event' in df.columns
-        if has_ts_event:
+        if has_ts_event and not self.fast_mode:
             print("Time-accurate replay enabled using ts_event timestamps")
+        elif self.fast_mode:
+            print("Fast mode enabled - streaming without timing delays")
         else:
             print("Streaming without timing (you messed up somewhere and we can't read the csv)")
         
@@ -147,15 +158,15 @@ class CSVKafkaProducer:
             start_time = time.time()
             first_timestamp = None
             
-            if has_ts_event:
+            if has_ts_event and not self.fast_mode:
                 first_timestamp = df.iloc[0]['ts_event']
                 print(f"First timestamp: {first_timestamp}")
             for _, row in df.iterrows():
                 if not self.running:             # needed to stop the stream @exit
                     break
                 
-                # Time-accurate replay using ts_event
-                if has_ts_event and first_timestamp:
+                # Time-accurate replay using ts_event (skip if fast_mode is enabled)
+                if has_ts_event and first_timestamp and not self.fast_mode:
                     current_timestamp = row['ts_event']
                     elapsed_data_time = (current_timestamp - first_timestamp).total_seconds()
                     elapsed_real_time = time.time() - start_time
@@ -226,10 +237,16 @@ def main():
     parser.add_argument('--kafka-servers', default='localhost:9092',
                         help='Kafka bootstrap servers')
     
+    parser.add_argument('--fast-mode', action='store_true',
+                        help='Enable fast mode (skip time-accurate replay)')
+    
     args = parser.parse_args()
     
     # Create and start producer
-    producer = CSVKafkaProducer(bootstrap_servers=args.kafka_servers)
+    producer = CSVKafkaProducer(
+        bootstrap_servers=args.kafka_servers,
+        fast_mode=args.fast_mode
+    )
     
     print(f"Starting Kafka Producer for CSV file: {args.file}")
     

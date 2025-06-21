@@ -92,6 +92,17 @@ docker compose -f docker-compose-sor.yml --profile benchmark up
 # - Output final JSON with savings in basis points
 ```
 
+### Option 2b: Clean Benchmark (Recommended for Final Results)
+```bash
+# Run benchmark with minimal logging for clean JSON output
+docker compose -f docker-compose-benchmark.yml up
+
+# Clean output showing only:
+# - Message production progress
+# - Final JSON results
+# - No Kafka UI, Zookeeper, or verbose logging noise
+```
+
 ### Option 3: Original Producer/Viewer Only
 ```bash
 # Legacy system for basic streaming made for kafka debugging

@@ -26,4 +26,5 @@ python benchmark_sor.py \
   --kafka-servers "$KAFKA_SERVERS" \
   --csv-file "$CSV_FILE" \
   --topic "$TOPIC_NAME" \
-  --order-size "$ORDER_SIZE" 
+  --order-size "$ORDER_SIZE" \
+  --fast-mode 
