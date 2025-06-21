@@ -417,9 +417,14 @@ class SmartOrderRouter:
             
             # Calculate execution summary
             total_executed = 0
+            cash_spent = 0.0
             for i, venue in enumerate(venues):
                 executed_at_venue = min(allocation[i], venue.ask_size)
                 total_executed += executed_at_venue
+                # Calculate actual cash spent (price + fee, minus rebate for over-allocation)
+                cash_spent += executed_at_venue * (venue.ask + venue.fee)
+                over_allocation = max(allocation[i] - venue.ask_size, 0)
+                cash_spent -= over_allocation * venue.rebate
             
             underfill = max(self.order_size - total_executed, 0)
             overfill = max(total_executed - self.order_size, 0)
@@ -444,7 +449,7 @@ class SmartOrderRouter:
                     'total_executed': total_executed,
                     'underfill': underfill,
                     'overfill': overfill,
-                    'cash_spent': total_cost,  # Simplified for now
+                    'cash_spent': cash_spent,  # Actual cash spent
                     'fill_rate': fill_rate
                 },
                 'venues': venue_details
